@@ -6191,19 +6191,19 @@ function handleCampaignDonation(campaignId) {
         }
 
         function renderMediaGrid(media) {
-    document.getElementById('mediaGallery').innerHTML = media.map(m => `
-        <div class="media-card">
-            <div class="media-thumb">
-                ${m.type === 'image' 
-                    ? `<img src="${m.url}" alt="${m.title}" style="width:100%;height:100%;object-fit:cover">` 
-                    : `<video src="${m.url}" controls style="width:100%;height:100%"></video>`}
-            </div>
-            div class="media-info">
+            document.getElementById('mediaGallery').innerHTML = media.map(m => `
+<div class="media-card">
+<div class="media-thumb">
+${m.type === 'image' ? '📷' : '🎥'}
+</div>
+<div class="media-info">
 <div class="media-title">${m.title}</div>
 <div class="media-meta">${m.date} | بواسطة ${m.uploadedBy}</div>
-        </div>
-    `).join('');
-}
+</div>
+${canDelete() ? `<div style="padding:1rem;display:flex;gap:5px"><button class="btn btn-sm btn-warning btn-block" onclick="editMedia(${m.id})">تعديل</button><button class="btn btn-sm btn-danger btn-block" onclick="deleteMedia(${m.id})">حذف</button></div>` : ''}
+</div>
+`).join('');
+        }
 
         function loadPublicMedia() {
             const media = DB.getData('media');
@@ -6227,65 +6227,33 @@ function handleCampaignDonation(campaignId) {
             }
         }
 
-        async function handleMediaUpload(e) {
-    e.preventDefault();
-    if (!canAdd()) return showToast('عذراً، ليس لديك صلاحية رفع الملفات', 'error');
-
-    const fileInput = document.getElementById('mediaFile');
-    const file = fileInput.files[0];
-    if (!file) {
-        showToast('الرجاء اختيار ملف', 'warning');
-        return;
-    }
-
-    // رفع الملف إلى Supabase Storage
-    const fileName = `${Date.now()}_${file.name}`;
-    const { data, error } = await supabase.storage
-        .from('media') // اسم الـ bucket
-        .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-        });
-
-    if (error) {
-        showToast('فشل رفع الملف: ' + error.message, 'error');
-        return;
-    }
-
-    // الحصول على رابط عام للملف
-    const { data: publicUrlData } = supabase.storage
-        .from('media')
-        .getPublicUrl(fileName);
-
-    const publicUrl = publicUrlData.publicUrl;
-
-    // حفظ معلومات الوسائط في localStorage كما هو معتاد (لكن مع الرابط الحقيقي)
-    const id = document.getElementById('mediaId').value;
-    const list = DB.getData('media');
-    const mediaData = {
-        type: file.type.startsWith('video') ? 'video' : 'image',
-        title: document.getElementById('mediaTitle').value,
-        caption: document.getElementById('mediaCaption').value,
-        category: document.getElementById('mediaType').value,
-        uploadedBy: currentUser ? currentUser.fullName : 'زائر',
-        date: new Date().toISOString().split('T')[0],
-        url: publicUrl // الرابط الحقيقي للملف
-    };
-
-    if (id) {
-        const idx = list.findIndex(m => m.id === Number(id));
-        if (idx > -1) { list[idx] = { ...list[idx], ...mediaData }; }
-        showToast('تم تحديث الملف', 'success');
-    } else {
-        mediaData.id = DB.getNextId('media');
-        list.push(mediaData);
-        showToast('تم رفع الملف بنجاح', 'success');
-    }
-
-    DB.setData('media', list);
-    closeModal('mediaModal');
-    loadMedia();
-}
+        function handleMediaUpload(e) {
+            if (!canAdd()) return showToast('عذراً، ليس لديك صلاحية رفع الملفات', 'error');
+            e.preventDefault();
+            const id = document.getElementById('mediaId').value;
+            const list = DB.getData('media');
+            const mediaData = {
+                type: document.getElementById('mediaFile').files[0]?.type.startsWith('video') ? 'video' : 'image',
+                title: document.getElementById('mediaTitle').value,
+                caption: document.getElementById('mediaCaption').value,
+                category: document.getElementById('mediaType').value,
+                uploadedBy: currentUser ? currentUser.fullName : 'زائر',
+                date: new Date().toISOString().split('T')[0],
+                url: 'https://via.placeholder.com/400'
+            };
+            if (id) {
+                const idx = list.findIndex(m => m.id === Number(id));
+                if (idx > -1) { list[idx] = { ...list[idx], ...mediaData }; }
+                showToast('تم تحديث الملف', 'success');
+            } else {
+                mediaData.id = DB.getNextId('media');
+                list.push(mediaData);
+                showToast('تم رفع الملف بنجاح', 'success');
+            }
+            DB.setData('media', list);
+            closeModal('mediaModal');
+            loadMedia();
+        }
 
         function editMedia(id) {
             const m = DB.getData('media').find(m => m.id === id);
