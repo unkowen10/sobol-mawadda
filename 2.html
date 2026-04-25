@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عماد عباد | للحداد والبويات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { cairo: ['Cairo','sans-serif'] } } }
+        };
+    </script>
+    <style>
+        :root {
+            --bg: #0B0F14;
+            --card: #121A24;
+            --card-alt: #182230;
+            --accent: #D4942A;
+            --accent-light: #F0B84A;
+            --text: #E4E8EC;
+            --text-muted: #5E7285;
+            --border: #1B2A3A;
+            --success: #2ECC71;
+            --danger: #E74C3C;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Cairo',sans-serif; }
+        body { background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+        /* تزيين الخلفية */
+        body::before {
+            content:''; position:fixed; top:-40%; right:-25%; width:75vw; height:75vw;
+            background:radial-gradient(circle, rgba(212,148,42,0.07) 0%, transparent 65%);
+            pointer-events:none; z-index:0;
+        }
+        body::after {
+            content:''; position:fixed; bottom:-35%; left:-15%; width:55vw; height:55vw;
+            background:radial-gradient(circle, rgba(212,148,42,0.04) 0%, transparent 65%);
+            pointer-events:none; z-index:0;
+        }
+
+        /* شريط تمرير */
+        ::-webkit-scrollbar { width:7px; }
+        ::-webkit-scrollbar-track { background:var(--bg); }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+        /* أنيميشن */
+        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideD { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulseGold { 0%,100%{box-shadow:0 0 0 0 rgba(212,148,42,0.25)} 50%{box-shadow:0 0 24px 4px rgba(212,148,42,0.08)} }
+        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .anim-fade { animation:fadeUp .5s ease forwards; }
+        .anim-slide { animation:slideD .25s ease forwards; }
+
+        /* بطاقات الشركات */
+        .comp-card {
+            background:var(--card); border:1px solid var(--border); border-radius:16px;
+            overflow:hidden; transition:all .3s; position:relative;
+        }
+        .comp-card:hover { border-color:rgba(212,148,42,0.25); box-shadow:0 8px 36px rgba(0,0,0,0.35); }
+        .comp-head {
+            padding:18px 22px; cursor:pointer; display:flex; align-items:center; gap:14px; transition:background .2s;
+        }
+        .comp-head:hover { background:var(--card-alt); }
+        .comp-logo {
+            width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+            font-weight:900; font-size:17px; color:#fff; flex-shrink:0; position:relative; overflow:hidden;
+        }
+        .comp-logo::after {
+            content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+            background:linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 50%);
+        }
+        .comp-body { max-height:0; overflow:hidden; transition:max-height .45s ease; }
+        .comp-body.open { max-height:8000px; }
+        .chev { transition:transform .3s; }
+        .chev.open { transform:rotate(180deg); }
+
+        /* جدول المنتجات */
+        .ptable { width:100%; border-collapse:separate; border-spacing:0; }
+        .ptable thead th {
+            background:rgba(212,148,42,0.07); padding:11px 16px; text-align:right;
+            font-weight:700; font-size:12px; color:var(--accent-light);
+            letter-spacing:.5px; border-bottom:1px solid var(--border);
+        }
+        .ptable tbody td { padding:13px 16px; border-bottom:1px solid rgba(27,42,58,0.5); transition:background .12s; }
+        .ptable tbody tr:hover td { background:rgba(212,148,42,0.035); }
+        .ptable tbody tr:last-child td { border-bottom:none; }
+
+        /* أزرار */
+        .btn-p {
+            background:linear-gradient(135deg,var(--accent),var(--accent-light)); color:#0B0F14;
+            font-weight:700; padding:10px 20px; border-radius:10px; border:none; cursor:pointer;
+            transition:all .2s; font-size:14px; display:inline-flex; align-items:center; gap:8px;
+            font-family:'Cairo',sans-serif;
+        }
+        .btn-p:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(212,148,42,0.3); }
+        .btn-s {
+            background:var(--card-alt); color:var(--text); font-weight:600; padding:10px 20px;
+            border-radius:10px; border:1px solid var(--border); cursor:pointer; transition:all .2s;
+            font-size:14px; display:inline-flex; align-items:center; gap:8px; font-family:'Cairo',sans-serif;
+        }
+        .btn-s:hover { border-color:var(--accent); color:var(--accent-light); }
+        .btn-i {
+            width:34px; height:34px; border-radius:8px; border:none; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:all .2s; font-size:13px;
+        }
+        .btn-i.ed { background:rgba(46,204,113,0.1); color:var(--success); }
+        .btn-i.ed:hover { background:rgba(46,204,113,0.2); }
+        .btn-i.dl { background:rgba(231,76,60,0.1); color:var(--danger); }
+        .btn-i.dl:hover { background:rgba(231,76,60,0.2); }
+
+        /* مودال */
+        .m-overlay {
+            position:fixed; inset:0; background:rgba(0,0,0,0.72); backdrop-filter:blur(4px);
+            z-index:1000; display:none; align-items:center; justify-content:center; padding:20px;
+        }
+        .m-overlay.act { display:flex; }
+        .m-box {
+            background:var(--card); border:1px solid var(--border); border-radius:20px;
+            width:100%; max-width:480px; animation:fadeUp .3s ease; max-height:90vh; overflow-y:auto;
+        }
+        .m-head { padding:22px 26px 0; display:flex; align-items:center; justify-content:space-between; }
+        .m-body { padding:22px 26px; }
+        .m-foot { padding:0 26px 22px; display:flex; gap:12px; }
+
+        /* حقول */
+        .f-input {
+            width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px;
+            padding:11px 16px; color:var(--text); font-size:15px; font-family:'Cairo',sans-serif;
+            transition:border-color .2s; outline:none;
+        }
+        .f-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(212,148,42,0.1); }
+        .f-input::placeholder { color:var(--text-muted); }
+        .f-label { display:block; margin-bottom:6px; font-weight:600; font-size:13px; color:var(--text-muted); }
+
+        /* بحث */
+        .sr-wrap { position:relative; }
+        .sr-drop {
+            position:absolute; top:100%; left:0; right:0; background:var(--card);
+            border:1px solid var(--border); border-radius:12px; margin-top:8px; max-height:420px;
+            overflow-y:auto; z-index:100; display:none; box-shadow:0 16px 48px rgba(0,0,0,0.45);
+        }
+        .sr-drop.act { display:block; animation:slideD .2s ease; }
+        .sr-item { padding:13px 18px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; }
+        .sr-item:hover { background:var(--card-alt); }
+        .sr-item:last-child { border-bottom:none; }
+
+        /* Toast */
+        .toast-c { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:2000; display:flex; flex-direction:column; gap:8px; }
+        .toast {
+            background:var(--card); border:1px solid var(--border); border-radius:12px;
+            padding:13px 22px; font-size:14px; font-weight:600; display:flex; align-items:center;
+            gap:10px; animation:slideD .3s ease; box-shadow:0 8px 32px rgba(0,0,0,0.35); white-space:nowrap;
+        }
+        .toast.ok { border-color:var(--success); color:var(--success); }
+        .toast.er { border-color:var(--danger); color:var(--danger); }
+
+        /* PDF */
+        #pdfTpl { position:absolute; left:-9999px; top:0; width:794px; background:#fff; font-family:'Cairo',sans-serif; color:#1a1a1a; direction:rtl; }
+
+        /* لودينج */
+        .ld-spin { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+        .logo-glow { animation:pulseGold 3s ease-in-out infinite; }
+        .price-sh {
+            background:linear-gradient(90deg,transparent,rgba(212,148,42,0.08),transparent);
+            background-size:200% 100%; animation:shimmer 3s infinite; border-radius:6px; padding:2px 8px; display:inline-block;
+        }
+
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+        @media(max-width:640px){
+            .ptable thead th,.ptable tbody td{padding:10px 10px;font-size:12px;}
+            .comp-head{padding:14px 16px;gap:10px;}
+            .hide-sm{display:none!important;}
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast -->
+    <div class="toast-c" id="toastC"></div>
+
+    <!-- الهيدر -->
+    <header style="position:relative;z-index:1;border-bottom:1px solid var(--border);background:rgba(11,15,20,0.85);backdrop-filter:blur(12px);position:sticky;top:0;">
+        <div class="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+                <div class="logo-glow" style="width:52px;height:52px;background:linear-gradient(135deg,var(--accent),var(--accent-light));border-radius:14px;display:flex;align-items:center;justify-content:center;">
+                    <svg width="30" height="30" viewBox="0 0 40 40" fill="none">
+                        <path d="M8 6L8 34L14 34L14 22L26 22L26 6Z" fill="#0B0F14" opacity="0.9"/>
+                        <path d="M22 14L22 34L28 34L28 14Z" fill="#0B0F14" opacity="0.55"/>
+                        <rect x="10" y="38" width="20" height="2" rx="1" fill="#0B0F14" opacity="0.3"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 style="font-size:22px;font-weight:900;color:var(--accent-light);line-height:1.15;">عماد عباد</h1>
+                    <p style="font-size:12px;color:var(--text-muted);font-weight:400;letter-spacing:.3px;">للحداد والبويات</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="exportExcel()" class="btn-s" style="font-size:13px;padding:8px 16px;">
+                    <i class="fas fa-file-excel" style="color:#27AE60;"></i>
+                    <span class="hide-sm">تصدير Excel</span>
+                </button>
+                <button onclick="exportPDF()" class="btn-s" style="font-size:13px;padding:8px 16px;">
+                    <i class="fas fa-file-pdf" style="color:#E74C3C;"></i>
+                    <span class="hide-sm">تصدير PDF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main style="position:relative;z-index:1;" class="max-w-7xl mx-auto px-5 py-7">
+        <!-- بحث + إضافة -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-7">
+            <div class="sr-wrap flex-1">
+                <div style="position:relative;">
+                    <i class="fas fa-search" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;"></i>
+                    <input type="text" id="srchIn" class="f-input" placeholder="ابحث عن أي منتج..." style="padding-right:42px;font-size:15px;" autocomplete="off">
+                </div>
+                <div class="sr-drop" id="srchDrop"></div>
+            </div>
+            <button onclick="openAddComp()" class="btn-p" style="user-select:none;">
+                <i class="fas fa-building"></i>
+                إضافة شركة
+            </button>
+        </div>
+
+        <!-- إحصائيات سريعة -->
+        <div id="statsBar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7" style="display:none;">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">عدد الشركات</div>
+                <div id="statComp" style="font-size:24px;font-weight:900;color:var(--accent-light);">0</div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">إجمالي المنتجات</div>
+                <div id="statProd" style="font-size:24px;font-weight:900;color:var(--success);">0</div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">أقل سعر بيع</div>
+                <div id="statMin" style="font-size:24px;font-weight:900;color:#3498DB;">0</div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">أعلى سعر بيع</div>
+                <div id="statMax" style="font-size:24px;font-weight:900;color:var(--danger);">0</div>
+            </div>
+        </div>
+
+        <!-- حاوية الشركات -->
+        <div id="compBox" class="flex flex-col gap-5"></div>
+
+        <!-- فارغ -->
+        <div id="emptySt" style="display:none;text-align:center;padding:70px 20px;">
+            <i class="fas fa-box-open" style="font-size:56px;color:var(--border);margin-bottom:16px;display:block;"></i>
+            <h3 style="font-size:18px;color:var(--text-muted);margin-bottom:6px;">لا توجد شركات بعد</h3>
+            <p style="color:var(--text-muted);font-size:13px;">اضغط على "إضافة شركة" للبدء</p>
+        </div>
+
+        <!-- لودينج -->
+        <div id="loadSt" style="text-align:center;padding:70px 20px;">
+            <div class="ld-spin" style="margin:0 auto 18px;"></div>
+            <p style="color:var(--text-muted);font-size:14px;">جاري تحميل البيانات من السيرفر...</p>
+        </div>
+    </main>
+
+    <!-- مودال شركة -->
+    <div class="m-overlay" id="compMod">
+        <div class="m-box">
+            <div class="m-head">
+                <h3 id="compModT" style="font-size:17px;font-weight:700;color:var(--accent-light);">إضافة شركة</h3>
+                <button onclick="closeMod('compMod')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="m-body">
+                <input type="hidden" id="edCompId">
+                <div class="mb-4">
+                    <label class="f-label">اسم الشركة</label>
+                    <input type="text" id="compNameIn" class="f-input" placeholder="مثال: الشركة المصرية للحديد">
+                </div>
+                <div id="logoPrev" style="display:none;text-align:center;padding:16px;">
+                    <div id="logoPrevBox" class="comp-logo" style="width:60px;height:60px;font-size:22px;margin:0 auto;border-radius:16px;"></div>
+                    <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">معاينة اللوجو التلقائي</p>
+                </div>
+            </div>
+            <div class="m-foot">
+                <button onclick="saveComp()" class="btn-p"><i class="fas fa-check"></i> حفظ</button>
+                <button onclick="closeMod('compMod')" class="btn-s">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال منتج -->
+    <div class="m-overlay" id="prodMod">
+        <div class="m-box">
+            <div class="m-head">
+                <h3 id="prodModT" style="font-size:17px;font-weight:700;color:var(--accent-light);">إضافة منتج</h3>
+                <button onclick="closeMod('prodMod')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="m-body">
+                <input type="hidden" id="edProdId">
+                <input type="hidden" id="prodCompId">
+                <div class="mb-4">
+                    <label class="f-label">اسم المنتج</label>
+                    <input type="text" id="prodNameIn" class="f-input" placeholder="مثال: بوابة حديد مودرن">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="f-label">سعر الجملة</label>
+                        <input type="number" id="wPriceIn" class="f-input" placeholder="0" min="0" step="0.5">
+                    </div>
+                    <div>
+                        <label class="f-label">سعر البيع</label>
+                        <input type="number" id="rPriceIn" class="f-input" placeholder="0" min="0" step="0.5">
+                    </div>
+                </div>
+            </div>
+            <div class="m-foot">
+                <button onclick="saveProd()" class="btn-p"><i class="fas fa-check"></i> حفظ</button>
+                <button onclick="closeMod('prodMod')" class="btn-s">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال حذف -->
+    <div class="m-overlay" id="delMod">
+        <div class="m-box" style="max-width:400px;">
+            <div class="m-body" style="text-align:center;padding:30px 26px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:44px;color:var(--danger);margin-bottom:14px;display:block;"></i>
+                <h3 id="delModT" style="font-size:17px;font-weight:700;margin-bottom:8px;">تأكيد الحذف</h3>
+                <p id="delModD" style="color:var(--text-muted);font-size:14px;">هل أنت متأكد؟</p>
+            </div>
+            <div class="m-foot" style="justify-content:center;">
+                <button id="delConfBtn" class="btn-p" style="background:linear-gradient(135deg,var(--danger),#c0392b);"><i class="fas fa-trash"></i> حذف</button>
+                <button onclick="closeMod('delMod')" class="btn-s">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- قالب PDF -->
+    <div id="pdfTpl"></div>
+
+    <script>
+    /* === Firebase === */
+    const firebaseConfig = {
+        apiKey: "AIzaSyDJ-RK8jHnsEUoVhpJqOJfRrKiXjDXGb7U",
+        authDomain: "iron-86a76.firebaseapp.com",
+        databaseURL: "https://iron-86a76-default-rtdb.firebaseio.com",
+        projectId: "iron-86a76",
+        storageBucket: "iron-86a76.firebasestorage.app",
+        messagingSenderId: "723793393799",
+        appId: "1:723793393799:web:173652e66bdc8c25a0e022",
+        measurementId: "G-SSBN215K48"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const compRef = db.ref('companies');
+
+    /* === متغيرات === */
+    let data = {};
+    let openState = {};
+
+    /* === ألوان === */
+    const palette = ['#E67E22','#27AE60','#2980B9','#8E44AD','#16A085','#D35400','#C0392B','#1ABC9C','#F39C12','#2874A6','#148F77','#CB4335','#7D3C98','#2C3E50','#D4AC0D'];
+    function compColor(n){ let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return palette[Math.abs(h)%palette.length]; }
+    function initials(n){ const w=n.trim().split(/\s+/); return w.length>=2? w[0][0]+w[1][0]:n.substring(0,2); }
+
+    /* === البيانات الابتكارية === */
+    const seed = [
+        { name:'المصرية للحديد والصلب', products:[
+            {name:'بوابة حديد مودرن كبيرة',wholesalePrice:4500,retailPrice:5200},
+            {name:'بوابة حديد كلاسيك',wholesalePrice:3800,retailPrice:4400},
+            {name:'بوابة شقة مفردة',wholesalePrice:2200,retailPrice:2600},
+            {name:'بوابة فيلا مزدوجة',wholesalePrice:6800,retailPrice:7900},
+            {name:'زاوية حديد 4×4 سم',wholesalePrice:85,retailPrice:110},
+            {name:'زاوية حديد 5×5 سم',wholesalePrice:110,retailPrice:140},
+            {name:'شريط حديد مسطح 5×30',wholesalePrice:120,retailPrice:150},
+            {name:'مشترك بوابة مودرن',wholesalePrice:2800,retailPrice:3400},
+        ]},
+        { name:'النيل للمقاولات الحديدية', products:[
+            {name:'شبك حديد مجلفان 10×10',wholesalePrice:180,retailPrice:220},
+            {name:'شبك حديد مجلفان 15×15',wholesalePrice:250,retailPrice:300},
+            {name:'شبك حديد مجلفان 20×20',wholesalePrice:340,retailPrice:410},
+            {name:'دربزين حديد خارجي (المتر)',wholesalePrice:450,retailPrice:550},
+            {name:'سلم حديد داخلي',wholesalePrice:3200,retailPrice:3800},
+            {name:'سلم حديد خارجي',wholesalePrice:4100,retailPrice:4900},
+            {name:'حافظة شبك معدنية',wholesalePrice:95,retailPrice:120},
+            {name:'ترسي شبك حديد',wholesalePrice:35,retailPrice:45},
+            {name:'قاعدة عمود شبك',wholesalePrice:150,retailPrice:190},
+        ]},
+        { name:'السلام للمعادن والأنابيب', products:[
+            {name:'ماسورة حديد 1 بوصة',wholesalePrice:65,retailPrice:85},
+            {name:'ماسورة حديد 1.5 بوصة',wholesalePrice:95,retailPrice:120},
+            {name:'ماسورة حديد 2 بوصة',wholesalePrice:130,retailPrice:165},
+            {name:'ماسورة حديد 2.5 بوصة',wholesalePrice:170,retailPrice:215},
+            {name:'ماسورة حديد 3 بوصة',wholesalePrice:210,retailPrice:270},
+            {name:'ماسورة حديد 4 بوصة',wholesalePrice:290,retailPrice:360},
+            {name:'حديد تسليح 8 مم',wholesalePrice:42,retailPrice:55},
+            {name:'حديد تسليح 10 مم',wholesalePrice:65,retailPrice:82},
+            {name:'حديد تسليح 12 مم',wholesalePrice:90,retailPrice:115},
+            {name:'حديد تسليح 16 مم',wholesalePrice:160,retailPrice:200},
+            {name:'حديد تسليح 20 مم',wholesalePrice:250,retailPrice:310},
+            {name:'حديد تسليح 25 مم',wholesalePrice:380,retailPrice:470},
+        ]},
+        { name:'الفجر للبويات والدهانات', products:[
+            {name:'بوية حديد مات (جالون)',wholesalePrice:180,retailPrice:230},
+            {name:'بوية حديد لامع (جالون)',wholesalePrice:210,retailPrice:265},
+            {name:'بوية زنك كرومات (جالون)',wholesalePrice:250,retailPrice:310},
+            {name:'بريمر حديد (جالون)',wholesalePrice:150,retailPrice:190},
+            {name:'ثينر بوية (لتر)',wholesalePrice:45,retailPrice:60},
+            {name:'رش حديد أسود (علبة)',wholesalePrice:35,retailPrice:48},
+            {name:'رش حديد فضي (علبة)',wholesalePrice:38,retailPrice:52},
+            {name:'رش حديد أبيض (علبة)',wholesalePrice:36,retailPrice:50},
+            {name:'بوية أبيض أمان (جالون)',wholesalePrice:195,retailPrice:245},
+            {name:'بوية مطاطي (جالون)',wholesalePrice:280,retailPrice:345},
+        ]},
+        { name:'البناء الحديث للمواد المعدنية', products:[
+            {name:'صامولة حديد 8 مم',wholesalePrice:3,retailPrice:5},
+            {name:'صامولة حديد 10 مم',wholesalePrice:4,retailPrice:6},
+            {name:'صامولة حديد 12 مم',wholesalePrice:5,retailPrice:8},
+            {name:'صامولة حديد 16 مم',wholesalePrice:8,retailPrice:12},
+            {name:'صامولة حديد 20 مم',wholesalePrice:12,retailPrice:18},
+            {name:'برغي حديد 10 مم',wholesalePrice:5,retailPrice:8},
+            {name:'برغي حديد 12 مم',wholesalePrice:7,retailPrice:10},
+            {name:'برغي حديد 16 مم',wholesalePrice:11,retailPrice:16},
+            {name:'مسمار حديد 2 بوصة',wholesalePrice:2,retailPrice:3},
+            {name:'مسمار حديد 3 بوصة',wholesalePrice:3,retailPrice:4.5},
+            {name:'وصلة حديد مسطحة',wholesalePrice:15,retailPrice:22},
+            {name:'مفتاح ربط 10 بوصة',wholesalePrice:45,retailPrice:60},
+            {name:'مفتاح ربط 14 بوصة',wholesalePrice:75,retailPrice:95},
+        ]},
+        { name:'الأمل للبويات والأدوات المتخصصة', products:[
+            {name:'معجون حديد (كيلو)',wholesalePrice:25,retailPrice:35},
+            {name:'ورق زجاج رقم 80',wholesalePrice:8,retailPrice:12},
+            {name:'ورق زجاج رقم 120',wholesalePrice:8,retailPrice:12},
+            {name:'ورق زجاج رقم 220',wholesalePrice:10,retailPrice:15},
+            {name:'شريط لاصق معادن',wholesalePrice:15,retailPrice:22},
+            {name:'فرشاة دهان 3 بوصة',wholesalePrice:18,retailPrice:25},
+            {name:'فرشاة دهان 5 بوصة',wholesalePrice:28,retailPrice:38},
+            {name:'رولة دهان 7 بوصة',wholesalePrice:45,retailPrice:60},
+            {name:'خيش دهان (متر)',wholesalePrice:12,retailPrice:18},
+            {name:'قطعة قماش تنشيف',wholesalePrice:8,retailPrice:12},
+        ]},
+    ];
+
+    /* === بذر البيانات === */
+    function seedData(){
+        const u={};
+        seed.forEach(c=>{
+            const ck=compRef.push().key;
+            u[`companies/${ck}/name`]=c.name;
+            u[`companies/${ck}/color`]=compColor(c.name);
+            u[`companies/${ck}/createdAt`]=Date.now();
+            c.products.forEach(p=>{
+                const pk=compRef.child(ck).child('products').push().key;
+                u[`companies/${ck}/products/${pk}/name`]=p.name;
+                u[`companies/${ck}/products/${pk}/wholesalePrice`]=p.wholesalePrice;
+                u[`companies/${ck}/products/${pk}/retailPrice`]=p.retailPrice;
+            });
+        });
+        db.ref().update(u);
+    }
+
+    /* === الاستماع === */
+    compRef.once('value').then(s=>{ if(!s.exists()) seedData(); });
+    compRef.on('value',s=>{
+        data=s.val()||{};
+        render();
+        document.getElementById('loadSt').style.display='none';
+    });
+
+    /* === عرض === */
+    function render(){
+        const box=document.getElementById('compBox');
+        const emp=document.getElementById('emptySt');
+        const statBar=document.getElementById('statsBar');
+        const keys=Object.keys(data);
+
+        // إحصائيات
+        let totalProd=0, minP=Infinity, maxP=0;
+        Object.values(data).forEach(c=>{
+            if(!c.products) return;
+            const pCount=Object.keys(c.products).length;
+            totalProd+=pCount;
+            Object.values(c.products).forEach(p=>{
+                if(p.retailPrice<minP) minP=p.retailPrice;
+                if(p.retailPrice>maxP) maxP=p.retailPrice;
+            });
+        });
+        if(keys.length>0){
+            statBar.style.display='grid';
+            document.getElementById('statComp').textContent=keys.length;
+            document.getElementById('statProd').textContent=totalProd;
+            document.getElementById('statMin').textContent=minP===Infinity?'0':minP.toLocaleString('ar-EG');
+            document.getElementById('statMax').textContent=maxP.toLocaleString('ar-EG');
+        } else { statBar.style.display='none'; }
+
+        if(!keys.length){ box.innerHTML=''; emp.style.display='block'; return; }
+        emp.style.display='none';
+        box.innerHTML='';
+
+        keys.forEach((k,i)=>{
+            const c=data[k];
+            const col=c.color||compColor(c.name);
+            const ini=initials(c.name);
+            const prods=c.products?Object.entries(c.products):[];
+            const isOpen=openState[k]||false;
+
+            const card=document.createElement('div');
+            card.className='comp-card anim-fade';
+            card.style.animationDelay=`${i*70}ms`;
+            card.style.opacity='0';
+            card.id=`card_${k}`;
+
+            card.innerHTML=`
+                <div class="comp-head" onclick="togComp('${k}')">
+                    <div class="comp-logo" style="background:${col};">${ini}</div>
+                    <div style="flex:1;min-width:0;">
+                        <h2 style="font-size:16px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</h2>
+                        <p style="font-size:12px;color:var(--text-muted);">${prods.length} منتج</p>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button onclick="event.stopPropagation();openAddProd('${k}')" class="btn-i ed" title="إضافة منتج"><i class="fas fa-plus"></i></button>
+                        <button onclick="event.stopPropagation();openEdComp('${k}')" class="btn-i ed" title="تعديل"><i class="fas fa-pen"></i></button>
+                        <button onclick="event.stopPropagation();confDelComp('${k}')" class="btn-i dl" title="حذف"><i class="fas fa-trash"></i></button>
+                        <i class="fas fa-chevron-down chev ${isOpen?'open':''}" style="color:var(--text-muted);font-size:13px;margin-right:4px;"></i>
+                    </div>
+                </div>
+                <div class="comp-body ${isOpen?'open':''}" id="body_${k}">
+                    ${prods.length?`
+                    <div style="overflow-x:auto;">
+                        <table class="ptable">
+                            <thead><tr>
+                                <th style="width:44px;text-align:center;">#</th>
+                                <th>اسم المنتج</th>
+                                <th style="width:135px;text-align:center;">سعر الجملة</th>
+                                <th style="width:135px;text-align:center;">سعر البيع</th>
+                                <th style="width:90px;text-align:center;">إجراءات</th>
+                            </tr></thead>
+                            <tbody>
+                                ${prods.map(([pk,p],pi)=>`
+                                <tr>
+                                    <td style="color:var(--text-muted);font-size:13px;text-align:center;">${pi+1}</td>
+                                    <td style="font-weight:600;font-size:14px;">${p.name}</td>
+                                    <td style="text-align:center;"><span class="price-sh" style="font-weight:700;color:var(--accent-light);font-size:14px;">${Number(p.wholesalePrice).toLocaleString('ar-EG')}</span></td>
+                                    <td style="text-align:center;"><span style="font-weight:700;color:var(--success);font-size:14px;">${Number(p.retailPrice).toLocaleString('ar-EG')}</span></td>
+                                    <td style="text-align:center;">
+                                        <div style="display:flex;gap:5px;justify-content:center;">
+                                            <button onclick="openEdProd('${k}','${pk}')" class="btn-i ed" title="تعديل"><i class="fas fa-pen-to-square"></i></button>
+                                            <button onclick="confDelProd('${k}','${pk}','${p.name.replace(/'/g,"\\'")}')" class="btn-i dl" title="حذف"><i class="fas fa-trash-can"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    `:`
+                    <div style="text-align:center;padding:36px 20px;color:var(--text-muted);">
+                        <i class="fas fa-box-open" style="font-size:28px;margin-bottom:10px;opacity:.25;display:block;"></i>
+                        <p style="font-size:13px;">لا توجد منتجات - أضف منتج جديد</p>
+                    </div>`}
+                </div>`;
+            box.appendChild(card);
+        });
+    }
+
+    /* === فتح/إغلاق === */
+    function togComp(k){
+        openState[k]=!openState[k];
+        const b=document.getElementById(`body_${k}`);
+        const card=b.closest('.comp-card');
+        const ch=card.querySelector('.chev');
+        if(openState[k]){ b.classList.add('open'); ch.classList.add('open'); }
+        else { b.classList.remove('open'); ch.classList.remove('open'); }
+    }
+
+    /* === مودالات === */
+    function openMod(id){ document.getElementById(id).classList.add('act'); }
+    function closeMod(id){ document.getElementById(id).classList.remove('act'); }
+
+    /* === شركة: إضافة === */
+    function openAddComp(){
+        document.getElementById('compModT').textContent='إضافة شركة جديدة';
+        document.getElementById('edCompId').value='';
+        document.getElementById('compNameIn').value='';
+        document.getElementById('logoPrev').style.display='none';
+        openMod('compMod');
+        setTimeout(()=>document.getElementById('compNameIn').focus(),100);
+    }
+
+    /* معاينة لوجو الشركة */
+    document.getElementById('compNameIn').addEventListener('input',function(){
+        const n=this.value.trim();
+        const pv=document.getElementById('logoPrev');
+        const bx=document.getElementById('logoPrevBox');
+        if(n.length>=2){ pv.style.display='block'; bx.style.background=compColor(n); bx.textContent=initials(n); }
+        else pv.style.display='none';
+    });
+
+    /* === شركة: تعديل === */
+    function openEdComp(k){
+        const c=data[k];
+        document.getElementById('compModT').textContent='تعديل اسم الشركة';
+        document.getElementById('edCompId').value=k;
+        document.getElementById('compNameIn').value=c.name;
+        const pv=document.getElementById('logoPrev');
+        const bx=document.getElementById('logoPrevBox');
+        pv.style.display='block';
+        bx.style.background=c.color||compColor(c.name);
+        bx.textContent=initials(c.name);
+        openMod('compMod');
+    }
+
+    /* === شركة: حفظ === */
+    function saveComp(){
+        const n=document.getElementById('compNameIn').value.trim();
+        const eid=document.getElementById('edCompId').value;
+        if(!n){ toast('الرجاء إدخال اسم الشركة','er'); return; }
+        if(eid){
+            compRef.child(eid).update({name:n,color:compColor(n)});
+            toast('تم تعديل اسم الشركة','ok');
+        } else {
+            compRef.push({name:n,color:compColor(n),createdAt:Date.now()});
+            toast('تم إضافة الشركة','ok');
+        }
+        closeMod('compMod');
+    }
+
+    /* === شركة: حذف === */
+    function confDelComp(k){
+        const c=data[k];
+        document.getElementById('delModT').textContent='حذف الشركة';
+        document.getElementById('delModD').textContent=`هل تريد حذف "${c.name}" وجميع منتجاتها؟ لا يمكن التراجع.`;
+        document.getElementById('delConfBtn').onclick=function(){
+            compRef.child(k).remove();
+            delete openState[k];
+            closeMod('delMod');
+            toast('تم حذف الشركة','ok');
+        };
+        openMod('delMod');
+    }
+
+    /* === منتج: إضافة === */
+    function openAddProd(ck){
+        document.getElementById('prodModT').textContent='إضافة منتج جديد';
+        document.getElementById('edProdId').value='';
+        document.getElementById('prodCompId').value=ck;
+        document.getElementById('prodNameIn').value='';
+        document.getElementById('wPriceIn').value='';
+        document.getElementById('rPriceIn').value='';
+        openMod('prodMod');
+        setTimeout(()=>document.getElementById('prodNameIn').focus(),100);
+    }
+
+    /* === منتج: تعديل === */
+    function openEdProd(ck,pk){
+        const p=data[ck].products[pk];
+        document.getElementById('prodModT').textContent='تعديل المنتج';
+        document.getElementById('edProdId').value=pk;
+        document.getElementById('prodCompId').value=ck;
+        document.getElementById('prodNameIn').value=p.name;
+        document.getElementById('wPriceIn').value=p.wholesalePrice;
+        document.getElementById('rPriceIn').value=p.retailPrice;
+        openMod('prodMod');
+    }
+
+    /* === منتج: حفظ === */
+    function saveProd(){
+        const n=document.getElementById('prodNameIn').value.trim();
+        const w=parseFloat(document.getElementById('wPriceIn').value)||0;
+        const r=parseFloat(document.getElementById('rPriceIn').value)||0;
+        const ck=document.getElementById('prodCompId').value;
+        const eid=document.getElementById('edProdId').value;
+        if(!n){ toast('الرجاء إدخال اسم المنتج','er'); return; }
+        if(eid){
+            compRef.child(ck).child('products').child(eid).update({name:n,wholesalePrice:w,retailPrice:r});
+            toast('تم تعديل المنتج','ok');
+        } else {
+            compRef.child(ck).child('products').push({name:n,wholesalePrice:w,retailPrice:r});
+            openState[ck]=true;
+            toast('تم إضافة المنتج','ok');
+        }
+        closeMod('prodMod');
+    }
+
+    /* === منتج: حذف === */
+    function confDelProd(ck,pk,pn){
+        document.getElementById('delModT').textContent='حذف المنتج';
+        document.getElementById('delModD').textContent=`هل تريد حذف "${pn}"؟`;
+        document.getElementById('delConfBtn').onclick=function(){
+            compRef.child(ck).child('products').child(pk).remove();
+            closeMod('delMod');
+            toast('تم حذف المنتج','ok');
+        };
+        openMod('delMod');
+    }
+
+    /* === بحث فوري === */
+    const srchIn=document.getElementById('srchIn');
+    const srchDrop=document.getElementById('srchDrop');
+
+    srchIn.addEventListener('input',function(){
+        const q=this.value.trim().toLowerCase();
+        if(!q){ srchDrop.classList.remove('act'); return; }
+        const res=[];
+        Object.entries(data).forEach(([k,c])=>{
+            if(!c.products) return;
+            Object.entries(c.products).forEach(([pk,p])=>{
+                if(p.name.toLowerCase().includes(q)){
+                    res.push({pn:p.name,cn:c.name,ck,k,w:p.wholesalePrice,r:p.retailPrice,col:c.color||compColor(c.name)});
+                }
+            });
+        });
+        if(!res.length){
+            srchDrop.innerHTML=`<div style="padding:22px;text-align:center;color:var(--text-muted);"><i class="fas fa-search" style="font-size:22px;opacity:.25;margin-bottom:8px;display:block;"></i><p style="font-size:13px;">لا توجد نتائج لـ "${this.value.trim()}"</p></div>`;
+        } else {
+            srchDrop.innerHTML=res.map(r=>`
+                <div class="sr-item" onclick="goProd('${r.ck}')">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="comp-logo" style="width:34px;height:34px;font-size:12px;border-radius:8px;background:${r.col};flex-shrink:0;">${initials(r.cn)}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.pn}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">${r.cn}</div>
+                        </div>
+                        <div style="display:flex;gap:16px;flex-shrink:0;">
+                            <div style="text-align:center;">
+                                <div style="font-size:13px;color:var(--accent-light);font-weight:700;">${Number(r.w).toLocaleString('ar-EG')}</div>
+                                <div style="font-size:10px;color:var(--text-muted);">جملة</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:13px;color:var(--success);font-weight:700;">${Number(r.r).toLocaleString('ar-EG')}</div>
+                                <div style="font-size:10px;color:var(--text-muted);">بيع</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+        srchDrop.classList.add('act');
+    });
+
+    document.addEventListener('click',e=>{ if(!e.target.closest('.sr-wrap')) srchDrop.classList.remove('act'); });
+
+    function goProd(ck){
+        openState[ck]=true;
+        srchDrop.classList.remove('act');
+        srchIn.value='';
+        render();
+        setTimeout(()=>{
+            const card=document.getElementById(`card_${ck}`);
+            if(card){
+                card.scrollIntoView({behavior:'smooth',block:'center'});
+                card.style.boxShadow='0 0 32px rgba(212,148,42,0.3)';
+                card.style.borderColor='rgba(212,148,42,0.5)';
+                setTimeout(()=>{card.style.boxShadow='';card.style.borderColor='';},1800);
+            }
+        },120);
+    }
+
+    /* === Toast === */
+    function toast(msg,type){
+        const c=document.getElementById('toastC');
+        const t=document.createElement('div');
+        t.className=`toast ${type}`;
+        const ic=type==='ok'?'fa-check-circle':'fa-exclamation-circle';
+        t.innerHTML=`<i class="fas ${ic}"></i> ${msg}`;
+        c.appendChild(t);
+        setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-16px)';t.style.transition='all .3s';setTimeout(()=>t.remove(),300);},2500);
+    }
+
+    /* === تصدير Excel === */
+    function exportExcel(){
+        const wb=XLSX.utils.book_new();
+        Object.entries(data).forEach(([k,c])=>{
+            if(!c.products) return;
+            const d=[['اسم المنتج','سعر الجملة (ج.م)','سعر البيع (ج.م)']];
+            Object.values(c.products).forEach(p=>d.push([p.name,p.wholesalePrice,p.retailPrice]));
+            const ws=XLSX.utils.aoa_to_sheet(d);
+            ws['!cols']=[{wch:38},{wch:20},{wch:20}];
+            XLSX.utils.book_append_sheet(wb,ws,c.name.substring(0,31));
+        });
+        XLSX.writeFile(wb,`اسعار_عماد_عباد_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
+        toast('تم تصدير Excel بنجاح','ok');
+    }
+
+    /* === تصدير PDF === */
+    async function exportPDF(){
+        toast('جاري إنشاء ملف PDF...','ok');
+        const tpl=document.getElementById('pdfTpl');
+        const today=new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'});
+
+        let compsHTML='';
+        Object.entries(data).forEach(([k,c])=>{
+            if(!c.products||!Object.keys(c.products).length) return;
+            const col=c.color||compColor(c.name);
+            const ini=initials(c.name);
+            let rows='';
+            let idx=0;
+            Object.values(c.products).forEach(p=>{
+                idx++;
+                const bg=idx%2===0?'background:#f7f8fa;':'';
+                rows+=`<tr style="${bg}">
+                    <td style="padding:9px 14px;border-bottom:1px solid #eee;font-size:12px;color:#999;text-align:center;">${idx}</td>
+                    <td style="padding:9px 14px;border-bottom:1px solid #eee;font-weight:600;font-size:13px;">${p.name}</td>
+                    <td style="padding:9px 14px;border-bottom:1px solid #eee;font-weight:700;color:${col};text-align:center;font-size:13px;">${Number(p.wholesalePrice).toLocaleString('ar-EG')} ج.م</td>
+                    <td style="padding:9px 14px;border-bottom:1px solid #eee;font-weight:700;color:#27AE60;text-align:center;font-size:13px;">${Number(p.retailPrice).toLocaleString('ar-EG')} ج.م</td>
+                </tr>`;
+            });
+            compsHTML+=`<div style="margin-bottom:28px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid ${col};">
+                    <div style="width:36px;height:36px;border-radius:9px;background:${col};display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:14px;">${ini}</div>
+                    <div style="font-size:16px;font-weight:800;color:#1a1a1a;">${c.name}</div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead><tr style="background:${col}12;">
+                        <th style="padding:8px 14px;text-align:center;font-size:11px;color:${col};font-weight:700;border-bottom:2px solid ${col};">م</th>
+                        <th style="padding:8px 14px;text-align:right;font-size:11px;color:${col};font-weight:700;border-bottom:2px solid ${col};">اسم المنتج</th>
+                        <th style="padding:8px 14px;text-align:center;font-size:11px;color:${col};font-weight:700;border-bottom:2px solid ${col};">سعر الجملة</th>
+                        <th style="padding:8px 14px;text-align:center;font-size:11px;color:${col};font-weight:700;border-bottom:2px solid ${col};">سعر البيع</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        });
+
+        tpl.innerHTML=`<div style="padding:36pxpx;">
+            <div style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:3px solid #D4942A;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;">
+                    <div style="width:48px;height:48px;background:linear-gradient(135deg,#D4942A,#F0B84A);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                        <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+                            <path d="M8 6L8 34L14 34L14 22L26 22L26 6Z" fill="#fff" opacity="0.9"/>
+                            <path d="M22 14L22 34L28 34L28 14Z" fill="#fff" opacity="0.55"/>
+                            <rect x="10" y="38" width="20" height="2" rx="1" fill="#fff" opacity="0.3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-size:26px;font-weight:900;color:#1a1a1a;">عماد عباد</div>
+                        <div style="font-size:13px;color:#888;">للحداد والبويات</div>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:#aaa;margin-top:6px;">قائمة الأسعار - ${today}</div>
+            </div>
+            ${compsHTML}
+            <div style="text-align:center;margin-top:36px;padding-top:16px;border-top:1px solid #ddd;color:#bbb;font-size:10px;">
+                تم إنشاء هذا الملف تلقائياً من نظام أسعار عماد عباد
+            </div>
+        </div>`;
+
+        /* تأخير بسيط للتأكد من رسم المحتوى */
+        await new Promise(r=>setTimeout(r,400));
+
+        try {
+            const canvas = await html2canvas(tpl, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageW = 210;
+            const pageH = 297;
+            const imgW = pageW;
+            const imgH = (canvas.height * imgW) / canvas.width;
+
+            let heightLeft = imgH;
+            let position = 0;
+
+            /* الصفحة الأولى */
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgW, imgH);
+            heightLeft -= pageH;
+
+            /* صفحات إضافية إن لزم */
+            while (heightLeft > 0) {
+                position = heightLeft - imgH;
+                pdf.addPage();
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgW, imgH);
+                heightLeft -= pageH;
+            }
+
+            pdf.save(`اسعار_عماد_عباد_${new Date().toLocaleDateString('ar-EG')}.pdf`);
+            toast('تم تصدير PDF بنجاح', 'ok');
+        } catch(err) {
+            console.error('PDF Error:', err);
+            toast('حدث خطأ أثناء إنشاء PDF', 'er');
+        }
+    }
+
+    /* === إغلاق المودالات بـ Escape === */
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.m-overlay.act').forEach(m => m.classList.remove('act'));
+            srchDrop.classList.remove('act');
+        }
+    });
+
+    /* === Enter في حقول الإدخال === */
+    document.getElementById('compNameIn').addEventListener('keydown', e => { if(e.key==='Enter') saveComp(); });
+    document.getElementById('rPriceIn').addEventListener('keydown', e => { if(e.key==='Enter') saveProd(); });
+    </script>
+</body>
+</html>
